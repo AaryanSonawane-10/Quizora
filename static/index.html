@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Notes to MCQs</title>
+  <meta name="description" content="Turn study notes into multiple-choice questions, each rated for difficulty and quality.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script>
+    // Apply the saved theme before first paint to avoid a flash.
+    try {
+      var t = localStorage.getItem("mcq-theme");
+      if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
+    } catch (e) {}
+  </script>
+</head>
+<body>
+  <a class="skip-link" href="#workspace">Skip to results</a>
+
+  <header class="topbar">
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 28 28" aria-hidden="true" focusable="false">
+        <circle cx="14" cy="14" r="11" fill="none" stroke="currentColor" stroke-width="2"/>
+        <circle cx="14" cy="14" r="6" fill="currentColor"/>
+      </svg>
+      <span class="brand-name">Notes to MCQs</span>
+    </div>
+    <div class="topbar-actions">
+      <span id="modeBadge" class="mode-badge" hidden></span>
+      <button type="button" id="themeToggle" class="ghost-btn">Switch to dark theme</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <aside class="sheet" aria-labelledby="sheetTitle">
+      <form id="genForm" novalidate>
+        <h1 id="sheetTitle" class="sheet-title">Turn your notes into a practice quiz</h1>
+
+        <div id="configWarning" class="callout callout-warn" role="status" hidden></div>
+
+        <fieldset class="field-group">
+          <legend>Your notes</legend>
+
+          <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-describedby="dropHint">
+            <input type="file" id="fileInput" accept=".pdf,.txt,application/pdf,text/plain" hidden>
+            <span class="dz-title">Drop a PDF or TXT file here</span>
+            <span class="dz-sub" id="dropHint">or <span class="link-like">browse your files</span> (up to 15 MB)</span>
+          </div>
+
+          <div id="fileChip" class="file-chip" hidden>
+            <span class="file-name" id="fileName"></span>
+            <span class="file-size" id="fileSize"></span>
+            <button type="button" id="removeFile" class="text-btn" aria-label="Remove file">Remove</button>
+          </div>
+
+          <details class="paste" id="pasteBox">
+            <summary>Paste text instead</summary>
+            <label class="sr-only" for="pasteText">Paste your notes</label>
+            <textarea id="pasteText" rows="6" placeholder="Paste lecture notes, a textbook section or a summary"></textarea>
+          </details>
+        </fieldset>
+
+        <fieldset class="field-group">
+          <legend>Quiz settings</legend>
+
+          <div class="field">
+            <label for="numQuestions">Number of questions <output id="numOut" for="numQuestions">5</output></label>
+            <input type="range" id="numQuestions" min="1" max="10" value="5">
+          </div>
+
+          <div class="field">
+            <label for="topic">Focus on a topic <span class="optional">(optional)</span></label>
+            <input type="text" id="topic" maxlength="200" placeholder="e.g. the Calvin cycle" autocomplete="off">
+          </div>
+
+          <div class="field field-switch">
+            <input type="checkbox" id="allowWeb" checked>
+            <label for="allowWeb">
+              Search the web if my notes fall short
+              <span class="hint">Only used when the notes have too little text, or don't cover your topic.</span>
+            </label>
+          </div>
+
+          <div class="field" id="webCountField">
+            <label for="maxWeb">Web results to add <output id="webOut" for="maxWeb">3</output></label>
+            <input type="range" id="maxWeb" min="1" max="5" value="3">
+          </div>
+        </fieldset>
+
+        <button type="submit" id="generateBtn" class="primary-btn">Generate questions</button>
+      </form>
+    </aside>
+
+    <section class="workspace" id="workspace" tabindex="-1" aria-live="polite">
+      <div id="emptyState" class="empty">
+        <h2>Your questions will appear here</h2>
+        <p>Add notes on the left and choose Generate questions. Each question comes with four options, a difficulty rating, a quality score and a short explanation.</p>
+        <div class="sample" aria-hidden="true">
+          <p class="sample-q">Which organelle is the site of the Calvin cycle?</p>
+          <ul class="sample-opts">
+            <li><span class="bubble">A</span> Mitochondrion</li>
+            <li><span class="bubble is-filled">B</span> Chloroplast stroma</li>
+            <li><span class="bubble">C</span> Golgi apparatus</li>
+            <li><span class="bubble">D</span> Nucleus</li>
+          </ul>
+        </div>
+      </div>
+
+      <div id="loadingState" class="loading" hidden>
+        <h2>Writing your questions</h2>
+        <p>This usually takes 10 to 30 seconds. <span id="elapsed">0s</span> so far.</p>
+        <div class="progress" role="progressbar" aria-label="Generating questions"><span></span></div>
+      </div>
+
+      <div id="errorState" class="callout callout-error" role="alert" hidden>
+        <h2 id="errorTitle">Couldn't generate questions</h2>
+        <p id="errorMessage"></p>
+      </div>
+
+      <div id="results" hidden>
+        <div class="results-head">
+          <div>
+            <h2 id="resultsTitle">Your questions</h2>
+            <p class="results-sub" id="resultsSub"></p>
+          </div>
+          <div class="export-bar" role="group" aria-label="Export">
+            <button type="button" class="ghost-btn" id="exportTxt">Download TXT</button>
+            <button type="button" class="ghost-btn" id="exportJson">Download JSON</button>
+            <button type="button" class="ghost-btn" id="printBtn">Print</button>
+          </div>
+        </div>
+
+        <dl class="report" id="report"></dl>
+        <p class="report-note" id="reportNote"></p>
+        <details class="sources" id="sourcesBox" hidden>
+          <summary>Evidence sources</summary>
+          <ul id="sourcesList"></ul>
+        </details>
+
+        <div class="tabs" role="tablist" aria-label="Question views">
+          <button type="button" role="tab" id="tabReview" aria-controls="reviewPanel" aria-selected="true">Review</button>
+          <button type="button" role="tab" id="tabQuiz" aria-controls="quizPanel" aria-selected="false" tabindex="-1">Take the quiz</button>
+        </div>
+
+        <div id="reviewPanel" role="tabpanel" aria-labelledby="tabReview"></div>
+        <div id="quizPanel" role="tabpanel" aria-labelledby="tabQuiz" hidden></div>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
